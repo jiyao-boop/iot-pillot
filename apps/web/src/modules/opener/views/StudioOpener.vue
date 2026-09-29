@@ -40,7 +40,7 @@ const canvasHostRef = ref<HTMLElement | null>(null);
  *  而不是某个子组件的实例 */
 const panelRef = ref<HTMLElement | null>(null);
 
-const { panelVisible, webglFailed, animationSkipped, replayAnimation } =
+const { panelVisible, webglFailed, animationSkipped, animationPlaying, skipAnimation, replayAnimation } =
   useStudioScene({
     canvasHostRef,
     panelRef,
@@ -113,6 +113,16 @@ const panelStyle = computed<Record<string, string>>(() => ({
       系统开了「减少动态效果」时我们默认不播（正确的无障碍行为），但必须让人
       知道原因并且能一键播放，否则整个开屏动画在这台机器上等于消失。
     -->
+    <button
+      v-if="animationPlaying"
+      type="button"
+      class="studio-opener__replay"
+      @pointerdown.stop
+      @click.stop="skipAnimation"
+    >
+      跳过动画 →
+    </button>
+
     <button
       v-if="animationSkipped"
       type="button"
@@ -255,6 +265,11 @@ const panelStyle = computed<Record<string, string>>(() => ({
 
 .studio-opener__replay:active {
   transform: translateY(0);
+}
+
+.studio-opener__replay:focus-visible {
+  outline: 2px solid var(--opener-blue);
+  outline-offset: 3px;
 }
 
 /* 面板外壳：垂直居中刻意用 top/bottom + margin:auto，不用

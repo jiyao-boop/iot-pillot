@@ -44,6 +44,8 @@ export interface UseStudioSceneResult {
    * 开了该设置的机器上整个开屏动画等于不存在，且无从发现原因。
    */
   animationSkipped: Ref<boolean>;
+  animationPlaying: Ref<boolean>;
+  skipAnimation: () => void;
   /** 手动重播开屏动画（会把场景复位后重新播放）*/
   replayAnimation: () => void;
 }
@@ -96,6 +98,7 @@ export function useStudioScene({
   const panelVisible = ref(false);
   const webglFailed = ref(false);
   const animationSkipped = ref(false);
+  const animationPlaying = ref(false);
 
   // 运行时本身不是响应式的：它内部持有 WebGLRenderer / Scene / Timeline，
   // 塞进 ref 会被 Vue 套 Proxy，反而破坏 Three.js 的内部身份比较。
@@ -112,7 +115,19 @@ export function useStudioScene({
       return;
     }
     animationSkipped.value = false;
-    runtime.play();
+    animationPlaying.value = true;
+    runtime.play(() => {
+      animationPlaying.value = false;
+    });
+  }
+
+  function skipAnimation(): void {
+    if (!runtime || disposed || !animationPlaying.value) {
+      return;
+    }
+    runtime.finishAnimation();
+    animationPlaying.value = false;
+    panelRef.value?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
   }
 
   onMounted(async () => {
@@ -176,7 +191,7 @@ export function useStudioScene({
     }
 
     // 5) 播开屏动画
-    runtime.play();
+    replayAnimation();
   });
 
   onUnmounted(() => {
@@ -186,5 +201,5 @@ export function useStudioScene({
     runtime = null;
   });
 
-  return { panelVisible, webglFailed, animationSkipped, replayAnimation };
+  return { panelVisible, webglFailed, animationSkipped, animationPlaying, skipAnimation, replayAnimation };
 }
