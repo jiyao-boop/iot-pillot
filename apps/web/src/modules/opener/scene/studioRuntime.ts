@@ -15,7 +15,9 @@ import type { StudioScene } from "./types";
 
 export interface StudioRuntime {
   /** 从头播放开屏动画（含面板初始隐藏位置）。可重复调用：会先把场景复位 */
-  play(): void;
+  play(onComplete?: () => void): void;
+  /** 快进到时间轴末尾，沿用正常播放完成后的背景漂浮 */
+  finishAnimation(): void;
   /** 启动渲染循环 */
   start(): void;
   /** 窗口尺寸变化：同步相机 aspect 与渲染器尺寸 */
@@ -100,7 +102,7 @@ export function createStudioRuntime(
   }
 
   return {
-    play(): void {
+    play(onComplete?: () => void): void {
       resetToInitialState();
 
       if (panelEl) {
@@ -113,8 +115,16 @@ export function createStudioRuntime(
           restPosition.copy(target.camera.position);
           idleStartAt = performance.now();
           idleActive = true;
+          onComplete?.();
         },
       });
+    },
+
+    finishAnimation(): void {
+      if (disposed) {
+        return;
+      }
+      timeline?.progress(1, false);
     },
 
     start(): void {
@@ -137,6 +147,10 @@ export function createStudioRuntime(
     },
 
     showFinalState(): void {
+      timeline?.kill();
+      timeline = null;
+      idleActive = false;
+
       target.camera.position.set(
         CONFIG.cameraStudio.x + CONFIG.cameraShiftRight,
         CONFIG.cameraStudio.y,
